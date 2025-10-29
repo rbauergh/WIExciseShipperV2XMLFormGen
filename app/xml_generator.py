@@ -5,7 +5,7 @@ Supports AB136 (Common Carrier) and AB137 (Fulfillment House) schemas
 
 from lxml import etree
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import os
 import re
 
@@ -214,7 +214,7 @@ class XMLGenerator:
             encoding='UTF-8'
         ).decode('utf-8')
     
-    def validate_xml(self, xml_string: str) -> tuple[bool, Optional[str]]:
+    def validate_xml(self, xml_string: str) -> Tuple[bool, Optional[str]]:
         """
         Validate XML against the schema with enhanced error messages
         
