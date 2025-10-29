@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wisconsin Excise Tax XML Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍷 Wisconsin Excise Tax XML Generator</h1>
+            <p class="subtitle">Generate compliant XML reports for WI Department of Revenue</p>
+        </header>
+
+        <!-- Report Type Selection -->
+        <section class="card">
+            <h2>1. Select Report Type</h2>
+            <div class="report-type-selector">
+                <label class="radio-card">
+                    <input type="radio" name="reportType" value="CommonCarrier" checked>
+                    <div class="radio-content">
+                        <strong>AB136 - Common Carrier</strong>
+                        <p>For common carriers shipping alcohol beverages</p>
+                    </div>
+                </label>
+                <label class="radio-card">
+                    <input type="radio" name="reportType" value="FulfillmentHouse">
+                    <div class="radio-content">
+                        <strong>AB137 - Fulfillment House</strong>
+                        <p>For fulfillment houses shipping wine</p>
+                    </div>
+                </label>
+            </div>
+        </section>
+
+        <!-- Filer Information -->
+        <section class="card">
+            <h2>2. Filer Information</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>TIN Type</label>
+                    <select id="tinType">
+                        <option value="FEIN">FEIN (Federal Employer ID)</option>
+                        <option value="SSN">SSN (Social Security Number)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>TIN Value <span class="required">*</span></label>
+                    <input type="text" id="tinValue" placeholder="123456789 (9 digits, no dashes)" maxlength="9" required>
+                    <small style="color: #6c757d; font-size: 0.85em;">Must be exactly 9 digits with no dashes or spaces</small>
+                </div>
+                <div class="form-group">
+                    <label>State EIN (optional)</label>
+                    <input type="text" id="stateEIN" placeholder="123012345678912 (15 digits)" maxlength="15">
+                </div>
+                <div class="form-group full-width">
+                    <label>Business Name Line 1 <span class="required">*</span></label>
+                    <input type="text" id="businessName1" placeholder="Test Company" required>
+                </div>
+                <div class="form-group full-width">
+                    <label>Business Name Line 2</label>
+                    <input type="text" id="businessName2">
+                </div>
+                <div class="form-group full-width">
+                    <label>Address Line 1 <span class="required">*</span></label>
+                    <input type="text" id="address1" placeholder="2135 Rimrock Rd" required>
+                </div>
+                <div class="form-group full-width">
+                    <label>Address Line 2</label>
+                    <input type="text" id="address2">
+                </div>
+                <div class="form-group">
+                    <label>City <span class="required">*</span></label>
+                    <input type="text" id="city" placeholder="Madison" required>
+                </div>
+                <div class="form-group">
+                    <label>State <span class="required">*</span></label>
+                    <input type="text" id="state" value="WI" maxlength="2" required>
+                </div>
+                <div class="form-group">
+                    <label>ZIP <span class="required">*</span></label>
+                    <input type="text" id="zip" placeholder="53713" maxlength="9" required>
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="saveFilerConfig()">💾 Save Filer Info</button>
+        </section>
+
+        <!-- Tax Period and Email -->
+        <section class="card">
+            <h2>3. Tax Period & Contact</h2>
+            <div class="help-box">
+                <p style="margin: 0;">
+                    💡 <strong>Tip:</strong> Use the calendar picker (click the calendar icon) to select dates. 
+                    The app automatically converts most date formats, but using the picker ensures it's correct!
+                </p>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Tax Period Begin <span class="required">*</span></label>
+                    <input type="date" id="taxPeriodBegin" required>
+                    <small style="color: #6c757d; font-size: 0.85em;">First day of the quarter (e.g., 2024-01-01 for Q1)</small>
+                </div>
+                <div class="form-group">
+                    <label>Tax Period End <span class="required">*</span></label>
+                    <input type="date" id="taxPeriodEnd" required>
+                    <small style="color: #6c757d; font-size: 0.85em;">Last day of the quarter (e.g., 2024-03-31 for Q1)</small>
+                </div>
+                <div class="form-group">
+                    <label>Acknowledgement Email <span class="required">*</span></label>
+                    <input type="email" id="ackEmail" placeholder="your.email@company.com" required>
+                    <small style="color: #6c757d; font-size: 0.85em;">Where Wisconsin DOR will send confirmation</small>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="amendedReturn">
+                        Amended Return
+                    </label>
+                    <small style="color: #6c757d; font-size: 0.85em; display: block; margin-top: 5px;">
+                        Only check this if you're correcting a previous submission
+                    </small>
+                </div>
+            </div>
+        </section>
+
+        <!-- Defaults (varies by report type) -->
+        <section class="card" id="defaultsSection">
+            <h2>4. Default Values</h2>
+            <p class="help-text">
+                ℹ️ <strong>Important:</strong> Fill in this section completely! This information will be used for 
+                <strong>ALL shipments</strong> in your report. For Common Carrier, this is the <strong>SENDER</strong> 
+                of the alcohol. For Fulfillment House, this is the <strong>MANUFACTURER/WINERY</strong>.
+            </p>
+            
+            <!-- Common Carrier Defaults -->
+            <div id="commonCarrierDefaults" class="defaults-panel">
+                <h3>Default Consignor Information</h3>
+                <p class="help-text" style="margin-bottom: 15px;">
+                    👉 The <strong>Consignor</strong> is the person/company <strong>SENDING</strong> the alcohol 
+                    (the shipper). This is usually the same for all your shipments.
+                </p>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Consignor Name <span class="required">*</span></label>
+                        <input type="text" id="ccConsignorName" placeholder="Company Name (e.g., ABC Wine Distributors)">
+                        <small style="color: #6c757d; font-size: 0.85em;">Who is sending the alcohol?</small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Consignor Address Line 1 <span class="required">*</span></label>
+                        <input type="text" id="ccConsignorAddress1" placeholder="123 Main Street">
+                        <small style="color: #6c757d; font-size: 0.85em;">Street address where shipments originate</small>
+                    </div>
+                    <div class="form-group">
+                        <label>City <span class="required">*</span></label>
+                        <input type="text" id="ccConsignorCity" placeholder="Madison">
+                    </div>
+                    <div class="form-group">
+                        <label>State <span class="required">*</span></label>
+                        <input type="text" id="ccConsignorState" value="WI" maxlength="2" placeholder="WI">
+                        <small style="color: #6c757d; font-size: 0.85em;">2-letter code</small>
+                    </div>
+                    <div class="form-group">
+                        <label>ZIP <span class="required">*</span></label>
+                        <input type="text" id="ccConsignorZip" maxlength="9" placeholder="53703">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Permit Number (optional)</label>
+                        <input type="text" id="ccPermitNumber" maxlength="15" placeholder="000000000000000 (15 digits if available)">
+                        <small style="color: #6c757d; font-size: 0.85em;">Leave blank if not applicable. If you have one, use exactly 15 digits.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fulfillment House Defaults -->
+            <div id="fulfillmentHouseDefaults" class="defaults-panel" style="display: none;">
+                <h3>Default Manufacturer Information</h3>
+                <p class="help-text" style="margin-bottom: 15px;">
+                    👉 The <strong>Manufacturer</strong> is the <strong>WINERY</strong> that made the wine. 
+                    This is usually the same for all your shipments.
+                </p>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Manufacturer Name <span class="required">*</span></label>
+                        <input type="text" id="fhManufacturerName" placeholder="Winery Name (e.g., Smith Family Vineyards)">
+                        <small style="color: #6c757d; font-size: 0.85em;">The winery that made the wine</small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Manufacturer Address Line 1 <span class="required">*</span></label>
+                        <input type="text" id="fhManufacturerAddress1" placeholder="456 Vineyard Road">
+                        <small style="color: #6c757d; font-size: 0.85em;">Street address of the winery</small>
+                    </div>
+                    <div class="form-group">
+                        <label>City <span class="required">*</span></label>
+                        <input type="text" id="fhManufacturerCity" placeholder="Madison">
+                    </div>
+                    <div class="form-group">
+                        <label>State <span class="required">*</span></label>
+                        <input type="text" id="fhManufacturerState" value="WI" maxlength="2" placeholder="WI">
+                        <small style="color: #6c757d; font-size: 0.85em;">2-letter code</small>
+                    </div>
+                    <div class="form-group">
+                        <label>ZIP <span class="required">*</span></label>
+                        <input type="text" id="fhManufacturerZip" maxlength="9" placeholder="53703">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Wine Permit Number <span class="required">*</span></label>
+                        <input type="text" id="fhWinePermitNumber" maxlength="15" placeholder="000000000000123 (exactly 15 digits)">
+                        <small style="color: #6c757d; font-size: 0.85em;">Pad with zeros at the start if needed to reach 15 digits</small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Common Carrier Permit Number <span class="required">*</span></label>
+                        <input type="text" id="fhCCPermitNumber" maxlength="15" placeholder="000000000000456 (exactly 15 digits)">
+                        <small style="color: #6c757d; font-size: 0.85em;">The permit number of the shipping company</small>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-secondary" onclick="saveDefaults()">💾 Save Defaults</button>
+        </section>
+
+        <!-- Shipment Data Entry -->
+        <section class="card">
+            <h2>5. Shipment Data</h2>
+            
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('csv', this)">📄 Import from CSV</button>
+                <button class="tab-btn" onclick="switchTab('manual', this)">✍️ Manual Entry</button>
+            </div>
+
+            <!-- CSV Import Tab -->
+            <div id="csvTab" class="tab-content">
+                <div class="csv-import-section">
+                    <div class="help-box">
+                        <h4>📋 How to Import from Excel:</h4>
+                        <ol style="margin: 10px 0; padding-left: 25px;">
+                            <li><strong>Open your Excel file</strong> with the shipment data</li>
+                            <li><strong>Select all your data</strong> (click top-left corner or press Ctrl+A)</li>
+                            <li><strong>Copy</strong> the data (Ctrl+C or right-click → Copy)</li>
+                            <li><strong>Click in the box below</strong> and paste (Ctrl+V)</li>
+                            <li><strong>Click the Import button</strong></li>
+                        </ol>
+                        <p style="margin-top: 10px;">
+                            💡 <strong>Tip:</strong> Make sure row 1 has column headers like "Name", "Address", "City", etc.
+                        </p>
+                        <p style="margin-top: 5px;">
+                            ✨ <strong>Smart Features:</strong> The app automatically converts date formats (10/29/2025 → 2024-10-29), 
+                            accepts many column name variations ("Address" or "Ship To Street" both work), 
+                            and converts bottles to liters for you!
+                        </p>
+                        <p style="margin-top: 5px;">
+                            Or <a href="#" onclick="downloadTemplate(); return false;"><strong>download a CSV template</strong></a> 
+                            to see the exact format.
+                        </p>
+                    </div>
+                    <textarea id="csvInput" rows="10" placeholder="Paste your CSV data here (Ctrl+V)...
+
+Example:
+Name,Address,City,State,Zip,Date,Weight,Type,Tracking
+John Doe,123 Main St,Madison,WI,53703,10/29/2025,25.5,Wine,1Z12345"></textarea>
+                    <button class="btn btn-primary" onclick="importCSV()">📥 Import & Map CSV Data</button>
+                </div>
+            </div>
+
+            <!-- Manual Entry Tab -->
+            <div id="manualTab" class="tab-content" style="display: none;">
+                <p class="help-text">After importing CSV data, you can edit it here or add shipments manually.</p>
+                <button class="btn btn-secondary" onclick="addShipmentRow()">➕ Add Shipment</button>
+            </div>
+
+            <!-- Shipment Data Table -->
+            <div id="shipmentsTableContainer" style="display: none;">
+                <h3>Shipments (<span id="shipmentCount">0</span>)</h3>
+                <div class="table-wrapper">
+                    <table id="shipmentsTable">
+                        <thead id="shipmentsTableHead">
+                            <!-- Dynamic headers based on report type -->
+                        </thead>
+                        <tbody id="shipmentsTableBody">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="clearShipments()">🗑️ Clear All</button>
+                    <button class="btn btn-secondary" onclick="addShipmentRow()">➕ Add Row</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Generate XML -->
+        <section class="card">
+            <h2>6. Generate XML</h2>
+            <p class="help-text">
+                💡 <strong>Ready to create your file?</strong> Click the button below. If there are any errors, 
+                the app will tell you exactly what to fix. Just fix the issue and click the button again - 
+                it will check for the next error. Keep going until you see the green SUCCESS message!
+            </p>
+            <button class="btn btn-success btn-large" onclick="generateXML()">
+                🚀 Generate & Validate XML
+            </button>
+            <p class="help-text" style="margin-top: 10px; text-align: center;">
+                <small>This button always checks everything fresh - click it as many times as needed!</small>
+            </p>
+        </section>
+
+        <!-- XML Preview -->
+        <section class="card" id="xmlPreviewSection" style="display: none;">
+            <h2>XML Preview</h2>
+            <div id="validationStatus" class="status-message"></div>
+            <div class="xml-preview-container">
+                <pre id="xmlPreview"></pre>
+            </div>
+            <div class="button-group">
+                <button class="btn btn-primary btn-large" onclick="downloadXML()">
+                    💾 Download XML File
+                </button>
+                <button class="btn btn-secondary" onclick="copyXML()">
+                    📋 Copy to Clipboard
+                </button>
+            </div>
+        </section>
+
+        <!-- Status Messages -->
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+    </div>
+
+    <footer>
+        <p>Wisconsin Excise Tax XML Generator v1.0 | Schema Version 0.2</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
+
