@@ -26,9 +26,9 @@ wheels/
 .installed.cfg
 *.egg
 
-# PyInstaller
+# PyInstaller build artifacts (but keep build_exe.spec - that's source!)
 *.manifest
-*.spec
+# Note: build_exe.spec is intentionally NOT ignored - it's part of the project
 
 # Flask
 instance/
