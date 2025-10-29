@@ -17,13 +17,17 @@ if errorlevel 1 (
 )
 
 echo Step 1: Installing dependencies...
+echo This may take a few minutes...
+echo.
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-pip install pyinstaller
+python -m pip install -r requirements.txt
+python -m pip install pyinstaller
 
 echo.
 echo Step 2: Building executable with PyInstaller...
-pyinstaller build_exe.spec --clean --noconfirm
+echo This may take 2-5 minutes...
+echo.
+python -m PyInstaller build_exe.spec --clean --noconfirm
 
 if errorlevel 1 (
     echo.
